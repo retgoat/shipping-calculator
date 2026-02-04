@@ -30,15 +30,15 @@ if (typeof Shopify.Cart === 'undefined') {
   Shopify.Cart = {}
 }
 // Creating a module to encapsulate this.
-Shopify.Cart.ShippingCalculator = (function() {  
+Shopify.Cart.ShippingCalculator = (function() {
   var _config = {
-    submitButton: 'Calculate shipping', 
+    submitButton: 'Calculate shipping',
     submitButtonDisabled: 'Calculating...',
     templateId: 'shipping-calculator-response-template',
     wrapperId: 'wrapper-response',
     customerIsLoggedIn: false,
     moneyFormat: '${{amount}}'
-  };  
+  };
   var _render = function(response) {
     var template = jQuery('#' + _config.templateId);
     var wrapper = jQuery('#' + _config.wrapperId);
@@ -64,7 +64,7 @@ Shopify.Cart.ShippingCalculator = (function() {
         }
       }
     }
-  };  
+  };
   var _enableButtons = function() {
     jQuery('.get-rates').removeAttr('disabled').removeClass('disabled').val(_config.submitButton);
   };
@@ -76,9 +76,8 @@ Shopify.Cart.ShippingCalculator = (function() {
         type: 'POST',
         url: '/cart/prepare_shipping_rates',
         data: jQuery.param({'shipping_address': shippingAddress}),
-        success: _pollForCartShippingRatesForDestination(shippingAddress),
-        error: _onError
-      }
+        complete: _pollForCartShippingRatesForDestination(shippingAddress)
+        }
     jQuery.ajax(params);
   };
   var _pollForCartShippingRatesForDestination = function(shippingAddress) {
@@ -116,15 +115,15 @@ Shopify.Cart.ShippingCalculator = (function() {
     var data = eval('(' + XMLHttpRequest.responseText + ')');
     if (!!data.message) {
       feedback = data.message + '(' + data.status  + '): ' + data.description;
-    } 
+    }
     else {
       feedback = 'Error : ' + _fullMessagesFromErrors(data).join('; ') + '.';
-    }    
+    }
     if (feedback === 'Error : country is not supported.') feedback = 'We do not ship to this destination.';
     // Update calculator.
     _render( { rates: [], errorFeedback: feedback, success: false } );
     jQuery('#' + _config.wrapperId).show();
-  };  
+  };
   var _onCartShippingRatesUpdate = function(rates, shipping_address) {
     // Re-enable calculate shipping buttons.
     _enableButtons();
@@ -153,7 +152,7 @@ Shopify.Cart.ShippingCalculator = (function() {
   var _formatRate = function(cents) {
     if (typeof Shopify.formatMoney === 'function') {
       return Shopify.formatMoney(cents, _config.moneyFormat);
-    }    
+    }
     if (typeof cents == 'string') { cents = cents.replace('.',''); }
     var value = '';
     var placeholderRegex = /\{\{\s*(\w+)\s*\}\}/;
@@ -228,12 +227,12 @@ Shopify.Cart.ShippingCalculator = (function() {
       jQuery(function() {
         _init();
       });
-    },    
+    },
     getConfig: function() {
       return _config;
     },
     formatRate: function(cents) {
       return _formatRate(cents);
     }
-  }  
+  }
 })();
