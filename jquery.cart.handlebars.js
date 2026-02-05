@@ -61,16 +61,27 @@
                 type: "POST",
                 url: "/cart/prepare_shipping_rates",
                 data: jQuery.param({ shipping_address: e }),
-                complete: function(xhr, status) {
-                    if (xhr.status === 202) {
-                        _pollForCartShippingRatesForDestination(shippingAddress);
-                    } else {
-                        _onError(xhr, status);
+                statusCode: {
+                    202: function() {
+                        setTimeout(_getRatesforAddressSynchronously(shippingAddress), 1300);
+                    },
+                    422: function(xhr, status) {
+                        return _onError(xhr, status);
                     }
-                }
+                },
+                error: _onError // maybe unneeded
             };
             jQuery.ajax(t);
         },
+        // fetch rates synchronously! That request could be throttled, use with setTimeout
+        _getRatesforAddressSynchronously = function(shippingAddress){
+            var url = '/cart/shipping_rates.json?' + jQuery.param({'shipping_address': shippingAddress});
+            fetch(url)
+            .then((response) => response.json())
+            .then((json) => {
+            _onCartShippingRatesUpdate(json.shipping_rates, shippingAddress);
+            });
+        };
         _pollForCartShippingRatesForDestination = function (e) {
             var t = function () {
                 jQuery.ajax("/cart/async_shipping_rates", {
