@@ -31,6 +31,45 @@ if (typeof Shopify.Cart === 'undefined') {
 }
 // Creating a module to encapsulate this.
 Shopify.Cart.ShippingCalculator = (function() {
+  // analog of jQuery.param(...)
+  var _param = function (a) {
+    var s = [];
+    var add = function (k, v) {
+      v = typeof v === 'function' ? v() : v;
+      v = v === null ? '' : v === undefined ? '' : v;
+      s[s.length] = encodeURIComponent(k) + '=' + encodeURIComponent(v);
+    };
+    var buildParams = function (prefix, obj) {
+      var i, len, key;
+
+      if (prefix) {
+        if (Array.isArray(obj)) {
+          for (i = 0, len = obj.length; i < len; i++) {
+            buildParams(
+              prefix + '[' + (typeof obj[i] === 'object' && obj[i] ? i : '') + ']',
+              obj[i]
+            );
+          }
+        } else if (Object.prototype.toString.call(obj) === '[object Object]') {
+          for (key in obj) {
+            buildParams(prefix + '[' + key + ']', obj[key]);
+          }
+        } else {
+          add(prefix, obj);
+        }
+      } else if (Array.isArray(obj)) {
+        for (i = 0, len = obj.length; i < len; i++) {
+          add(obj[i].name, obj[i].value);
+        }
+      } else {
+        for (key in obj) {
+          buildParams(key, obj[key]);
+        }
+      }
+      return s;
+    };
+    return buildParams('', a).join('&');
+  };
   var _config = {
     submitButton: 'Calculate shipping',
     submitButtonDisabled: 'Calculating...',
@@ -76,15 +115,26 @@ Shopify.Cart.ShippingCalculator = (function() {
         type: 'POST',
         url: '/cart/prepare_shipping_rates',
         data: jQuery.param({'shipping_address': shippingAddress}),
-        complete: function(xhr, status) {
-          if (xhr.status === 202) {
-            _pollForCartShippingRatesForDestination(shippingAddress);
-          } else {
-            _onError(xhr, status);
+        statusCode: {
+          202: function() {
+            setTimeout(_getRatesforAddressSynchronously(shippingAddress), 1300);
+          },
+          422: function(xhr, status) {
+            return _onError(xhr, status);
           }
-        }
+        },
+        error: _onError // maybe unneeded
     }
     jQuery.ajax(params);
+  };
+  // fetch rates synchronously! That request could be throttled, use with setTimeout
+  var _getRatesforAddressSynchronously = function(shippingAddress){
+    var url = '/cart/shipping_rates.json?' + jQuery.param({'shipping_address': shippingAddress});
+    fetch(url)
+    .then((response) => response.json())
+    .then((json) => {
+      _onCartShippingRatesUpdate(json.shipping_rates, shippingAddress);
+    });
   };
   var _pollForCartShippingRatesForDestination = function(shippingAddress) {
     var poller = function() {
