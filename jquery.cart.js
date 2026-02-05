@@ -76,8 +76,14 @@ Shopify.Cart.ShippingCalculator = (function() {
         type: 'POST',
         url: '/cart/prepare_shipping_rates',
         data: jQuery.param({'shipping_address': shippingAddress}),
-        complete: _pollForCartShippingRatesForDestination(shippingAddress)
+        complete: function(xhr, status) {
+          if (xhr.status === 202) {
+            _pollForCartShippingRatesForDestination(shippingAddress);
+          } else {
+            _onError(xhr, status);
+          }
         }
+    }
     jQuery.ajax(params);
   };
   var _pollForCartShippingRatesForDestination = function(shippingAddress) {
